@@ -1,0 +1,566 @@
+<meta charset="utf-8">
+<title>Zonnepanelenkaart NL & Vlaanderen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen tool — map fills the left, a fixed-width reading panel on the right (stacks under the map on phones). */
+:root {
+  --bg: #f3f4f1;
+  --surface: #ffffff;
+  --ink: #1d2433;
+  --muted: #5f6878;
+  --line: #d9dcd6;
+  --accent: #c2410c;
+  --panel-blue: #1f3a5f;
+  --context: #e3e5e0;
+  --context-line: #c9ccc5;
+  --nodata: #eceae4;
+  --hatch: #cfcbc0;
+  --s0: #fbf3d9; --s1: #f8e0a0; --s2: #f4c56a; --s3: #eda33f; --s4: #de7a24; --s5: #bf5517; --s6: #8a3a12;
+  --b0: #e3f1f1; --b1: #bfe0e0; --b2: #8fc8ca; --b3: #5aa9b0; --b4: #348891; --b5: #1d6872; --b6: #114a53;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161d; --surface: #1a2029; --ink: #e8eaee; --muted: #9aa3b2; --line: #2c3440;
+  --accent: #f08a4b; --panel-blue: #9cc0ec; --context: #222933; --context-line: #323b48; --nodata: #262b33; --hatch: #3a414c;
+  --s0: #3b2f1a; --s1: #5c4218; --s2: #80561a; --s3: #a8691c; --s4: #d0801f; --s5: #eea43a; --s6: #fbd27a;
+  --b0: #16302f; --b1: #1b4545; --b2: #215d5e; --b3: #2a7a7b; --b4: #3b9a99; --b5: #5fbcb8; --b6: #9adfd8;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --ink: #e8eaee; --muted: #9aa3b2; --line: #2c3440;
+  --accent: #f08a4b; --panel-blue: #9cc0ec; --context: #222933; --context-line: #323b48; --nodata: #262b33; --hatch: #3a414c;
+  --s0: #3b2f1a; --s1: #5c4218; --s2: #80561a; --s3: #a8691c; --s4: #d0801f; --s5: #eea43a; --s6: #fbd27a;
+  --b0: #16302f; --b1: #1b4545; --b2: #215d5e; --b3: #2a7a7b; --b4: #3b9a99; --b5: #5fbcb8; --b6: #9adfd8;
+  color-scheme: dark; }
+
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+header.bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--surface);
+}
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.brand h1 { font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.brand small { color: var(--muted); font-size: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.seg button { font: 500 12.5px var(--font-body); color: var(--muted); background: transparent; border: 0; padding: 7px 11px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button:focus-visible, .search input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.search { position: relative; }
+.search input { font: 14px var(--font-body); padding: 7px 10px; width: 230px; max-width: 70vw; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.search .hint { position: absolute; top: 100%; left: 0; font-size: 11.5px; color: var(--accent); margin-top: 3px; white-space: nowrap; }
+
+main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+.mapwrap { position: relative; min-height: 0; overflow: hidden; }
+#map { width: 100%; height: 100%; display: block; cursor: grab; }
+#map:active { cursor: grabbing; }
+.area { stroke: var(--surface); stroke-width: 0.6; vector-effect: non-scaling-stroke; cursor: pointer; }
+.area:hover { stroke: var(--ink); stroke-width: 1.4; }
+.area.sel { stroke: var(--ink); stroke-width: 2.4; }
+.ctx { fill: var(--context); stroke: var(--context-line); stroke-width: 0.5; vector-effect: non-scaling-stroke; cursor: pointer; }
+.ctx:hover { fill: var(--line); }
+.prov { fill: none; stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; opacity: .55; }
+.focusline { fill: none; stroke: var(--ink); stroke-width: 1.6; vector-effect: non-scaling-stroke; pointer-events: none; }
+.border { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; opacity: .5; }
+
+.crumbs { position: absolute; top: 12px; left: max(12px, env(safe-area-inset-left, 0px)); display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: calc(100% - 24px); }
+.crumbs button { font: 500 13px var(--font-body); background: none; border: 0; color: var(--panel-blue); cursor: pointer; padding: 2px 3px; text-decoration: underline; text-underline-offset: 2px; }
+.crumbs span.cur { font-weight: 600; padding: 2px 3px; }
+.crumbs .sep { color: var(--muted); }
+.sublevel { position: absolute; top: 56px; left: max(12px, env(safe-area-inset-left, 0px)); }
+.legend { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 11.5px; max-width: calc(100% - 24px); }
+.legend .t { font-weight: 600; margin-bottom: 5px; font-size: 12px; }
+.legend .row { display: flex; gap: 0; }
+.legend .row div { flex: 1 1 0; min-width: 34px; }
+.legend .sw { height: 10px; }
+.legend .lb { font-family: var(--font-data); font-size: 10.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+.legend .nd { display: flex; align-items: center; gap: 6px; color: var(--muted); margin-top: 6px; }
+.legend .nd i { width: 14px; height: 10px; background: var(--nodata); border: 1px solid var(--line); display: inline-block; }
+.zoombtns { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.zoombtns button { width: 32px; height: 32px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; font-size: 17px; cursor: pointer; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; max-width: 260px; z-index: 20; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.tip b { font-weight: 600; display: block; font-size: 13.5px; }
+.tip .v { font-family: var(--font-data); }
+
+aside.panel { border-left: 1px solid var(--line); background: var(--surface); overflow-y: auto; min-width: 0;
+  padding-block: 18px 28px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ptitle { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; margin: 2px 0 0; text-wrap: balance; }
+.psub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.hero { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hero .big { font-family: var(--font-display); font-size: 44px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; }
+.hero .cap { color: var(--muted); font-size: 13px; max-width: 18ch; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
+.chip.hot { color: var(--accent); border-color: var(--accent); }
+.spark svg { width: 100%; height: 70px; display: block; }
+.spark text { font-family: var(--font-data); font-size: 9.5px; fill: var(--muted); }
+h3.sec { font-family: var(--font-display); font-weight: 700; font-size: 16px; margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+h3.sec small { font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rank li button { width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 6px 2px; color: var(--ink); cursor: pointer; font: 13px var(--font-body); }
+.rank li button:hover { background: var(--bg); }
+.rank li button.sel { background: var(--bg); font-weight: 600; }
+.rank .n { font-family: var(--font-data); color: var(--muted); font-size: 11.5px; }
+.rank .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank .nm small { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.rank .val { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 12.5px; position: relative; padding-left: 6px; }
+.rank .bar { display: block; height: 3px; border-radius: 2px; background: var(--s3); margin-top: 3px; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.note { font-size: 12px; color: var(--muted); line-height: 1.5; border-top: 1px solid var(--line); padding-top: 12px; }
+.note p { margin: 0 0 6px; }
+.note a { color: var(--panel-blue); }
+.more { font: 500 12.5px var(--font-body); color: var(--panel-blue); background: none; border: 0; padding: 6px 0 0; cursor: pointer; text-align: left; }
+
+@media (max-width: 860px) {
+  .app { height: auto; }
+  html, body { height: auto; }
+  main { grid-template-columns: 1fr; }
+  .mapwrap { height: 62vh; min-height: 380px; }
+  aside.panel { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .controls { margin-left: 0; }
+  .search input { width: 100%; }
+  .search { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <h1>Zonnepanelenkaart</h1>
+      <small>Nederland &amp; Vlaanderen · voor Bob Laadt Op</small>
+    </div>
+    <div class="controls">
+      <div class="seg" id="metricSeg" role="group" aria-label="Wat kleurt de kaart"></div>
+      <div class="search">
+        <input id="q" type="search" list="gemlist" placeholder="Zoek gemeente of postcode" autocomplete="off" aria-label="Zoek gemeente of postcode">
+        <datalist id="gemlist"></datalist>
+        <div class="hint" id="qhint" hidden></div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="mapwrap">
+      <svg id="map" role="img" aria-label="Kaart met zonnepanelen per gebied"></svg>
+      <nav class="crumbs" id="crumbs" aria-label="Kruimelpad"></nav>
+      <div class="sublevel" id="sublevel" hidden><div class="seg" id="subSeg" role="group" aria-label="Detailniveau"></div></div>
+      <div class="zoombtns"><button id="zin" aria-label="Inzoomen">+</button><button id="zout" aria-label="Uitzoomen">−</button><button id="zreset" aria-label="Passend maken" title="Passend maken">⤢</button></div>
+      <div class="legend" id="legend"></div>
+      <div class="loading" id="loading">Kaart laden…</div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </main>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+// Waar de map data/ staat. Leeg = naast deze pagina; anders een volledige URL die eindigt op "/".
+const DATA_BASE = '';
+const NF = new Intl.NumberFormat('nl-NL');
+const fmtInt = v => v == null ? '–' : NF.format(Math.round(v));
+const fmtPct = v => v == null ? '–' : v.toLocaleString('nl-NL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+const slug = s => s.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
+
+const METRICS = {
+  pct:    { short: '% met panelen', label: '% woningen met zonnepanelen', fmt: fmtPct, ramp: 's' },
+  pv:     { short: 'Aantal',        label: 'Aantal installaties',          fmt: fmtInt, ramp: 's' },
+  kans:   { short: 'Kansen (VL)',   label: 'Installaties zonder thuisbatterij', fmt: fmtInt, ramp: 's', beOnly: true },
+  batpct: { short: 'Batterij % (VL)', label: '% PV-eigenaars met thuisbatterij', fmt: fmtPct, ramp: 'b', beOnly: true },
+};
+const SUBLEVELS = { wijk: 'Wijken', buurt: 'Buurten', pc4: 'Postcodes' };
+
+const state = { metric: 'pct', land: 'all', gm: null, sub: 'wijk', wijk: null, sel: null, showAll: false };
+const cache = {};
+let overview, gemById = {}, gemFeatures, provFeatures, nlPc4 = {};
+
+const svg = d3.select('#map'), root = svg.append('g');
+const gCtx = root.append('g'), gMain = root.append('g'), gLines = root.append('g');
+const zoom = d3.zoom().scaleExtent([1, 60]).on('zoom', e => root.attr('transform', e.transform));
+svg.call(zoom).on('dblclick.zoom', null);
+d3.select('#zin').on('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1.6));
+d3.select('#zout').on('click', () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.6));
+d3.select('#zreset').on('click', () => svg.transition().duration(250).call(zoom.transform, d3.zoomIdentity));
+
+// Planar lon/lat projection scaled for ~51.5°N; avoids spherical winding issues and is accurate enough at this extent.
+const K = Math.cos(51.5 * Math.PI / 180);
+let tf = { s: 1, ox: 0, oy: 0 };
+const proj = d3.geoTransform({ point(x, y) { this.stream.point(tf.ox + tf.s * x * K, tf.oy - tf.s * y); } });
+const path = d3.geoPath(proj);
+const planar = d3.geoPath(d3.geoIdentity());
+function fitTo(fc) {
+  const node = svg.node(), W = node.clientWidth, H = node.clientHeight;
+  const [[x0, y0], [x1, y1]] = planar.bounds(fc);
+  const pad = Math.min(W, H) * 0.08, padTop = W < 600 ? 70 : 40;
+  const s = Math.min((W - 2 * pad) / ((x1 - x0) * K), (H - pad - padTop) / (y1 - y0));
+  tf = { s, ox: (W - s * (x1 - x0) * K) / 2 - s * x0 * K, oy: padTop + (H - pad - padTop - s * (y1 - y0)) / 2 + s * y1 };
+  svg.call(zoom.transform, d3.zoomIdentity);
+}
+
+function rampColors(r) { const cs = getComputedStyle(document.documentElement); return d3.range(7).map(i => cs.getPropertyValue(`--${r}${i}`).trim()); }
+function nodata() { return getComputedStyle(document.documentElement).getPropertyValue('--nodata').trim(); }
+function makeScale(values, metric) {
+  const v = values.filter(x => x != null && isFinite(x)).sort(d3.ascending);
+  const colors = rampColors(METRICS[metric].ramp);
+  if (v.length < 2) return { color: () => colors[3], breaks: [] };
+  let breaks = d3.range(1, 7).map(i => d3.quantileSorted(v, i / 7));
+  breaks = breaks.map(b => metric.endsWith('pct') ? Math.round(b * 10) / 10 : (b > 100 ? Math.round(b / 10) * 10 : Math.round(b)));
+  breaks = breaks.filter((b, i) => i === 0 || b > breaks[i - 1]);
+  const sc = d3.scaleThreshold().domain(breaks).range(colors.slice(7 - breaks.length - 1));
+  return { color: x => x == null ? nodata() : sc(x), breaks, colors: sc.range(), min: v[0], max: v[v.length - 1] };
+}
+
+function metricValue(p) { return p[state.metric] ?? null; }
+
+async function loadJSON(url) {
+  const embedded = document.getElementById('d:' + url);
+  if (embedded && !cache[url]) cache[url] = Promise.resolve(JSON.parse(embedded.textContent));
+  if (!cache[url]) cache[url] = fetch(DATA_BASE + url).then(r => { if (!r.ok) throw new Error(url); return r.json(); }); return cache[url]; }
+
+async function init() {
+  const [topo, pc4] = await Promise.all([loadJSON('data/overview.json'), loadJSON('data/nl_pc4.json').catch(() => ({}))]);
+  overview = topo; nlPc4 = pc4;
+  gemFeatures = topojson.feature(topo, topo.objects.gem).features;
+  provFeatures = topojson.feature(topo, topo.objects.prov).features;
+  gemFeatures.forEach(f => gemById[f.properties.id] = f);
+  const dl = document.getElementById('gemlist');
+  gemFeatures.map(f => f.properties.name).sort((a, b) => a.localeCompare(b, 'nl')).forEach(n => { const o = document.createElement('option'); o.value = n; dl.appendChild(o); });
+  buildMetricSeg();
+  document.getElementById('loading').hidden = true;
+  const h = location.hash.slice(1);
+  if (h && gemById[h]) openGemeente(h); else renderOverview();
+  window.addEventListener('resize', debounce(() => render(true), 200));
+}
+const debounce = (fn, ms) => { let t; return () => { clearTimeout(t); t = setTimeout(fn, ms); }; };
+
+function buildMetricSeg() {
+  const seg = d3.select('#metricSeg');
+  seg.selectAll('button').data(Object.keys(METRICS)).join('button')
+    .text(k => METRICS[k].short).attr('title', k => METRICS[k].label)
+    .attr('aria-pressed', k => k === state.metric)
+    .on('click', (e, k) => { state.metric = k; seg.selectAll('button').attr('aria-pressed', d => d === k); render(false); });
+}
+
+function render(refit) { if (state.gm) renderGemeente(refit); else renderOverview(refit); }
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById('tip');
+function showTip(e, p, kind) {
+  const m = METRICS[state.metric];
+  let h = `<b>${esc(p.name)}</b>`;
+  if (kind) h += `<span style="opacity:.75">${kind}</span><br>`;
+  h += `${m.label}: <span class="v">${m.fmt(metricValue(p))}</span>`;
+  if (state.metric !== 'pv') h += `<br>Installaties: <span class="v">${fmtInt(p.pv)}</span>`;
+  if (state.metric !== 'pct') h += `<br>Woningen met panelen: <span class="v">${fmtPct(p.pct)}</span>`;
+  tip.innerHTML = h; tip.hidden = false; moveTip(e);
+}
+function moveTip(e) { const x = Math.min(e.clientX + 14, window.innerWidth - 270); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
+function hideTip() { tip.hidden = true; }
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- overview ---------- */
+function visibleGem() { return gemFeatures.filter(f => state.land === 'all' || f.properties.land === state.land); }
+function renderOverview(refit = true) {
+  state.gm = null; state.wijk = null;
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  if (refit) fitTo({ type: 'FeatureCollection', features: gemFeatures });
+  const scale = makeScale(gemFeatures.map(f => metricValue(f.properties)), state.metric);
+  gCtx.selectAll('*').remove();
+  gMain.selectAll('path').data(gemFeatures, f => f.properties.id).join('path')
+    .attr('class', f => 'area' + (state.sel === f.properties.id ? ' sel' : ''))
+    .attr('d', path).attr('fill', f => scale.color(metricValue(f.properties)))
+    .on('mousemove', (e, f) => showTip(e, f.properties, f.properties.land === 'NL' ? 'Gemeente (NL)' : 'Gemeente (VL)'))
+    .on('mouseleave', hideTip)
+    .on('click', (e, f) => { hideTip(); openGemeente(f.properties.id); });
+  gLines.selectAll('*').remove();
+  gLines.selectAll('path.prov').data(provFeatures).join('path').attr('class', 'prov').attr('d', path);
+  d3.select('#sublevel').property('hidden', true);
+  renderCrumbs();
+  renderLegend(scale, 'gemeenten');
+  renderOverviewPanel();
+}
+
+function totals(fs) {
+  const t = { pv: 0, won: 0, bat: 0, kans: 0, kwp: 0 };
+  fs.forEach(f => { const p = f.properties; t.pv += p.pv || 0; t.won += p.won || 0; t.bat += p.bat || 0; t.kans += p.kans || 0; t.kwp += p.kwp || 0; });
+  t.pct = t.won ? 100 * t.pv / t.won : null; t.batpct = t.pv ? 100 * t.bat / t.pv : null; return t;
+}
+
+function renderOverviewPanel() {
+  const nl = totals(gemFeatures.filter(f => f.properties.land === 'NL'));
+  const be = totals(gemFeatures.filter(f => f.properties.land === 'BE'));
+  const m = METRICS[state.metric];
+  const list = visibleGem().filter(f => metricValue(f.properties) != null).sort((a, b) => metricValue(b.properties) - metricValue(a.properties));
+  const n = state.showAll ? list.length : 25;
+  const max = list.length ? metricValue(list[0].properties) : 1;
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div>
+      <div class="eyebrow">Overzicht</div>
+      <h2 class="ptitle">Waar liggen de meeste zonnepanelen?</h2>
+      <div class="psub">Klik op een gemeente voor wijken, buurten en postcodes.</div>
+    </div>
+    <dl class="kv">
+      <dt>Nederland · installaties bij woningen (2025)</dt><dd>${fmtInt(nl.pv)}</dd>
+      <dt>Nederland · woningen met panelen</dt><dd>${fmtPct(nl.pct)}</dd>
+      <dt>Vlaanderen · installaties laagspanning (sep 2026)</dt><dd>${fmtInt(be.pv)}</dd>
+      <dt>Vlaanderen · aansluitingen met panelen</dt><dd>${fmtPct(be.pct)}</dd>
+      <dt>Vlaanderen · thuisbatterijen</dt><dd>${fmtInt(be.bat)}</dd>
+      <dt>Vlaanderen · panelen zonder batterij</dt><dd>${fmtInt(be.kans)}</dd>
+    </dl>
+    <div>
+      <h3 class="sec">Top gemeenten <small>${esc(m.label)}</small></h3>
+      <div class="filters" style="margin:8px 0 6px">
+        <div class="seg" id="landSeg">
+          <button data-l="all" aria-pressed="${state.land === 'all'}">Alles</button>
+          <button data-l="NL" aria-pressed="${state.land === 'NL'}">Nederland</button>
+          <button data-l="BE" aria-pressed="${state.land === 'BE'}">Vlaanderen</button>
+        </div>
+      </div>
+      ${m.beOnly ? '<p class="psub">Alleen beschikbaar voor Vlaanderen: Nederland publiceert geen thuisbatterijen per gemeente.</p>' : ''}
+      <ol class="rank" id="rank">${list.slice(0, n).map((f, i) => rankRow(f.properties, i, max, f.properties.land === 'NL' ? 'NL' : 'VL')).join('')}</ol>
+      ${list.length > 25 ? `<button class="more" id="more">${state.showAll ? 'Toon top 25' : `Toon alle ${list.length}`}</button>` : ''}
+    </div>
+    ${sourcesNote()}`;
+  panel.querySelectorAll('#landSeg button').forEach(b => b.onclick = () => { state.land = b.dataset.l; renderOverviewPanel(); });
+  panel.querySelectorAll('#rank button').forEach(b => b.onclick = () => openGemeente(b.dataset.id));
+  const more = panel.querySelector('#more'); if (more) more.onclick = () => { state.showAll = !state.showAll; renderOverviewPanel(); };
+}
+function rankRow(p, i, max, tag) {
+  const v = metricValue(p), w = max ? Math.max(2, 100 * v / max) : 0;
+  return `<li><button data-id="${esc(p.id)}" class="${state.sel === p.id ? 'sel' : ''}"><span class="n">${i + 1}</span><span class="nm">${esc(p.name)}${tag ? `<small>${tag}</small>` : ''}<span class="bar" style="width:${w}%"></span></span><span class="val">${METRICS[state.metric].fmt(v)}</span></button></li>`;
+}
+
+/* ---------- gemeente ---------- */
+async function openGemeente(id, opts = {}) {
+  const g = gemById[id]; if (!g) return;
+  state.gm = id; state.wijk = opts.wijk || null; state.sel = opts.sel || null; state.showAll = false;
+  if (g.properties.land === 'BE') state.sub = 'pc';
+  else if (opts.sub) state.sub = opts.sub;
+  else if (!['wijk', 'buurt', 'pc4'].includes(state.sub)) state.sub = 'wijk';
+  history.replaceState(null, '', '#' + id);
+  document.getElementById('loading').hidden = false;
+  try { await loadProvince(g.properties); } catch (e) { console.warn(e); }
+  document.getElementById('loading').hidden = true;
+  if (state.gm === id) renderGemeente(true);
+}
+async function loadProvince(p) {
+  const url = `data/${p.land === 'NL' ? 'nl' : 'be'}/${slug(p.prov)}.json`;
+  let topo;
+  try { topo = await loadJSON(url); } catch (e) { return {}; }
+  if (!topo._f) { topo._f = {}; for (const k in topo.objects) topo._f[k] = topojson.feature(topo, topo.objects[k]).features; }
+  return topo._f;
+}
+function subFeatures(g, F) {
+  const id = g.properties.id;
+  if (g.properties.land === 'BE') return (F.pc || []).filter(f => f.properties.gm === id);
+  const buurten = (F.buurt || []).filter(f => f.properties.gm === id);
+  if (state.sub === 'buurt') return state.wijk ? buurten.filter(f => f.properties.wk === state.wijk) : buurten;
+  if (state.sub === 'pc4') { const set = new Set(buurten.map(f => f.properties.pc4)); return (F.pc4 || []).filter(f => set.has(f.properties.pc4)); }
+  return (F.wijk || []).filter(f => f.properties.gm === id);
+}
+function levelName(g) { return g.properties.land === 'BE' ? 'postcodes' : ({ wijk: 'wijken', buurt: 'buurten', pc4: 'postcodegebieden' })[state.sub]; }
+
+async function renderGemeente(refit = true) {
+  const g = gemById[state.gm];
+  const F = await loadProvince(g.properties);
+  const subs = subFeatures(g, F);
+  const wijkF = state.wijk ? (F.wijk || []).find(f => f.properties.id === state.wijk) : null;
+  if (refit) fitTo(wijkF ? { type: 'FeatureCollection', features: [wijkF] } : { type: 'FeatureCollection', features: [g] });
+  gCtx.selectAll('path').data(gemFeatures.filter(f => f.properties.id !== state.gm), f => f.properties.id).join('path')
+    .attr('class', 'ctx').attr('d', path)
+    .on('mousemove', (e, f) => { tip.innerHTML = `<b>${esc(f.properties.name)}</b>Klik om te openen`; tip.hidden = false; moveTip(e); })
+    .on('mouseleave', hideTip).on('click', (e, f) => { hideTip(); openGemeente(f.properties.id); });
+  const scale = makeScale(subs.map(f => metricValue(f.properties)), state.metric);
+  const kind = g.properties.land === 'BE' ? 'Postcode' : ({ wijk: 'Wijk', buurt: 'Buurt', pc4: 'Postcodegebied' })[state.sub];
+  gMain.selectAll('path').data(subs, f => f.properties.id).join('path')
+    .attr('class', f => 'area' + (state.sel === f.properties.id ? ' sel' : ''))
+    .attr('d', path).attr('fill', f => scale.color(metricValue(f.properties)))
+    .on('mousemove', (e, f) => showTip(e, labelOf(f.properties, g), kind))
+    .on('mouseleave', hideTip)
+    .on('click', (e, f) => { hideTip(); clickSub(f.properties); });
+  gMain.selectAll('path.sel').raise();
+  gLines.selectAll('*').remove();
+  gLines.append('path').datum(g).attr('class', 'focusline').attr('d', path);
+  if (wijkF) gLines.append('path').datum(wijkF).attr('class', 'border').attr('d', path);
+  const sl = d3.select('#sublevel').property('hidden', g.properties.land === 'BE');
+  if (g.properties.land === 'NL') {
+    d3.select('#subSeg').selectAll('button').data(Object.keys(SUBLEVELS)).join('button')
+      .text(k => SUBLEVELS[k]).attr('aria-pressed', k => k === state.sub)
+      .on('click', (e, k) => { state.sub = k; state.wijk = null; state.sel = null; renderGemeente(true); });
+  }
+  renderCrumbs(wijkF);
+  renderLegend(scale, levelName(g));
+  renderGemeentePanel(g, subs, wijkF);
+}
+function labelOf(p, g) {
+  if (g.properties.land === 'BE') return { ...p, name: `${p.id}` };
+  if (state.sub === 'pc4') return { ...p, name: `${p.pc4}` };
+  return p;
+}
+function clickSub(p) {
+  const g = gemById[state.gm];
+  if (g.properties.land === 'NL' && state.sub === 'wijk') { state.sub = 'buurt'; state.wijk = p.id; state.sel = null; renderGemeente(true); return; }
+  state.sel = state.sel === p.id ? null : p.id;
+  renderGemeente(false);
+}
+
+function renderCrumbs(wijkF) {
+  const c = document.getElementById('crumbs'); const parts = [];
+  if (!state.gm) { c.innerHTML = '<span class="cur">Nederland &amp; Vlaanderen</span>'; return; }
+  const g = gemById[state.gm];
+  parts.push('<button data-a="home">Nederland &amp; Vlaanderen</button>');
+  parts.push(`<span class="sep">›</span>`);
+  parts.push(wijkF ? `<button data-a="gem">${esc(g.properties.name)}</button>` : `<span class="cur">${esc(g.properties.name)}</span>`);
+  if (wijkF) parts.push(`<span class="sep">›</span><span class="cur">${esc(wijkF.properties.name)}</span>`);
+  c.innerHTML = parts.join('');
+  c.querySelector('[data-a=home]').onclick = () => { state.sel = state.gm; state.gm = null; renderOverview(true); };
+  const gb = c.querySelector('[data-a=gem]'); if (gb) gb.onclick = () => { state.wijk = null; state.sub = 'wijk'; state.sel = null; renderGemeente(true); };
+}
+
+function renderLegend(scale, what) {
+  const m = METRICS[state.metric], el = document.getElementById('legend');
+  if (!scale.breaks.length) { el.innerHTML = `<div class="t">${esc(m.label)}</div><div class="nd"><i></i>Geen gegevens op dit niveau</div>`; return; }
+  const lf = state.metric.endsWith('pct') ? v => Math.round(v) + '%' : v => v >= 10000 ? Math.round(v / 1000) + 'k' : fmtInt(v);
+  el.innerHTML = `<div class="t">${esc(m.label)} · ${esc(what)}</div>
+    <div class="row">${scale.colors.map((c, i) => `<div><div class="sw" style="background:${c}"></div><div class="lb">${i === 0 ? '' : esc(lf(scale.breaks[i - 1]))}</div></div>`).join('')}</div>
+    <div class="nd"><i></i>geen gegevens${m.beOnly ? ' (NL publiceert geen batterijdata)' : ''}</div>`;
+}
+
+function sparkline(trend) {
+  const yrs = d3.range(2019, 2026), W = 320, H = 70, pad = { l: 4, r: 4, t: 14, b: 14 };
+  const vals = trend.map(v => v ?? null); const max = d3.max(vals) || 1;
+  const x = d3.scaleBand().domain(yrs).range([pad.l, W - pad.r]).padding(0.25);
+  const y = d3.scaleLinear().domain([0, max]).range([H - pad.b, pad.t]);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Groei installaties 2019-2025">
+    ${yrs.map((yr, i) => vals[i] == null ? '' : `<rect x="${x(yr)}" y="${y(vals[i])}" width="${x.bandwidth()}" height="${H - pad.b - y(vals[i])}" fill="var(${i === yrs.length - 1 ? '--s5' : '--s2'})" rx="1.5"></rect>`).join('')}
+    ${yrs.map(yr => `<text x="${x(yr) + x.bandwidth() / 2}" y="${H - 2}" text-anchor="middle">${String(yr).slice(2)}</text>`).join('')}
+    <text x="${x(2025) + x.bandwidth() / 2}" y="${y(vals[6] || 0) - 3}" text-anchor="middle" style="fill:var(--ink)">${fmtInt(vals[6])}</text>
+  </svg>`;
+}
+
+function statsBlock(p, land, level) {
+  if (land === 'BE') return `
+    <div class="hero"><span class="big">${fmtPct(p.pct)}</span><span class="cap">van de laagspanningsaansluitingen heeft zonnepanelen</span></div>
+    <dl class="kv">
+      <dt>Installaties zonnepanelen</dt><dd>${fmtInt(p.pv)}</dd>
+      <dt>Geïnstalleerd vermogen</dt><dd>${fmtInt(p.kwp)} kVA</dd>
+      <dt>Aansluitingen (laagspanning)</dt><dd>${fmtInt(p.won)}</dd>
+      <dt>Thuisbatterijen</dt><dd>${fmtInt(p.bat)}</dd>
+      <dt>PV-eigenaars met batterij</dt><dd>${fmtPct(p.batpct)}</dd>
+      <dt><b>Panelen zonder batterij</b></dt><dd><b>${fmtInt(p.kans)}</b></dd>
+    </dl>`;
+  const yr = level === 'gemeente' ? '2025' : '2022';
+  return `
+    <div class="hero"><span class="big">${fmtPct(p.pct)}</span><span class="cap">van de woningen heeft zonnepanelen (${yr})</span></div>
+    <dl class="kv">
+      <dt>Installaties bij woningen</dt><dd>${fmtInt(p.pv)}</dd>
+      <dt>Opgesteld vermogen</dt><dd>${fmtInt(p.kwp)} kWp</dd>
+      <dt>Woningvoorraad</dt><dd>${fmtInt(p.won)}</dd>
+      ${p.koop != null ? `<dt>Koopwoningen</dt><dd>${p.koop}%</dd>` : ''}
+      ${p.eengez != null ? `<dt>Eengezinswoningen</dt><dd>${p.eengez}%</dd>` : ''}
+      ${p.woz != null ? `<dt>Gem. WOZ-waarde</dt><dd>€ ${fmtInt(p.woz * 1000)}</dd>` : ''}
+      ${p.ink != null ? `<dt>Gem. inkomen per inwoner</dt><dd>€ ${fmtInt(p.ink * 1000)}</dd>` : ''}
+      ${/^\d{4}$/.test(p.pc4 || '') ? `<dt>Meest voorkomende postcode</dt><dd>${esc(p.pc4)}</dd>` : ''}
+      ${p.groei != null ? `<dt>Groei sinds 2022</dt><dd>+${p.groei}%</dd>` : ''}
+    </dl>`;
+}
+
+function renderGemeentePanel(g, subs, wijkF) {
+  const gp = g.properties, land = gp.land;
+  const selF = state.sel ? subs.find(f => f.properties.id === state.sel) : null;
+  const focus = selF ? selF.properties : wijkF ? wijkF.properties : gp;
+  const level = selF ? (land === 'BE' ? 'postcode' : state.sub) : wijkF ? 'wijk' : 'gemeente';
+  const eyebrow = level === 'gemeente' ? `Gemeente · ${land === 'NL' ? 'Nederland' : 'Vlaanderen'} · ${esc(gp.prov)}`
+    : ({ wijk: 'Wijk', buurt: 'Buurt', pc4: 'Postcodegebied (via buurten)', postcode: 'Postcode' })[level] + ' in ' + esc(gp.name);
+  const title = level === 'postcode' ? `${focus.id}` : level === 'pc4' ? `${focus.pc4}` : focus.name;
+  const m = METRICS[state.metric];
+  const list = subs.filter(f => metricValue(f.properties) != null).sort((a, b) => metricValue(b.properties) - metricValue(a.properties));
+  const max = list.length ? metricValue(list[0].properties) : 1;
+  const n = state.showAll ? list.length : 30;
+  const subLabel = land === 'BE' ? 'Postcodes' : ({ wijk: 'Wijken', buurt: state.wijk ? 'Buurten in deze wijk' : 'Buurten', pc4: 'Postcodegebieden' })[state.sub];
+  const nlYearNote = land === 'NL' && level !== 'gemeente' ? '<span class="chip">CBS 2022</span>' : '';
+  const hot = land === 'BE' && focus.batpct != null && focus.batpct < 15 && (focus.pv || 0) > 200;
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div>
+      <div class="eyebrow">${eyebrow}</div>
+      <h2 class="ptitle">${esc(title)}</h2>
+      <div class="psub">${level === 'postcode' ? esc(focus.gmname || gp.name) + ' · ' : ''}${nlYearNote} ${hot ? '<span class="chip hot">Weinig batterijen, veel panelen</span>' : ''}</div>
+    </div>
+    ${statsBlock(focus, land, level)}
+    ${level === 'gemeente' && land === 'NL' && gp.trend ? `<div class="spark"><div class="eyebrow" style="margin-bottom:4px">Installaties bij woningen 2019–2025</div>${sparkline(gp.trend)}</div>` : ''}
+    ${selF || wijkF ? `<button class="more" id="back">← Terug naar ${esc(wijkF && selF ? wijkF.properties.name : gp.name)}</button>` : ''}
+    <div>
+      <h3 class="sec">${subLabel} <small>${esc(m.label)}</small></h3>
+      ${m.beOnly && land === 'NL' ? '<p class="psub">Geen batterijdata voor Nederland. Kies “% met panelen” of “Aantal”.</p>' : ''}
+      ${land === 'NL' && state.sub === 'wijk' && !wijkF ? '<p class="psub">Klik op een wijk om de buurten te zien.</p>' : ''}
+      <ol class="rank" id="rank" style="margin-top:8px">${list.slice(0, n).map((f, i) => rankRow(rowProps(f.properties, land), i, max)).join('')}</ol>
+      ${list.length > 30 ? `<button class="more" id="more">${state.showAll ? 'Toon top 30' : `Toon alle ${list.length}`}</button>` : ''}
+    </div>
+    ${sourcesNote()}`;
+  panel.querySelectorAll('#rank button').forEach(b => b.onclick = () => {
+    const f = subs.find(s => s.properties.id === b.dataset.id); if (f) clickSub(f.properties);
+  });
+  const more = panel.querySelector('#more'); if (more) more.onclick = () => { state.showAll = !state.showAll; renderGemeentePanel(g, subs, wijkF); };
+  const back = panel.querySelector('#back'); if (back) back.onclick = () => {
+    if (selF) state.sel = null; else { state.wijk = null; state.sub = 'wijk'; }
+    renderGemeente(!selF);
+  };
+}
+function rowProps(p, land) {
+  if (land === 'BE') return { ...p, name: `${p.id}` };
+  if (state.sub === 'pc4') return { ...p, name: p.pc4 };
+  return p;
+}
+
+function sourcesNote() {
+  return `<div class="note">
+    <p><b>Nederland</b>: gemeenten uit CBS <a href="https://opendata.cbs.nl/#/CBS/nl/dataset/85005NED" target="_blank" rel="noopener">85005NED</a> (installaties bij woningen, 2025, nader voorlopig) gedeeld door de woningvoorraad 2025. Wijken en buurten uit CBS <a href="https://opendata.cbs.nl/#/CBS/nl/dataset/86044NED" target="_blank" rel="noopener">86044NED</a> (2022, nieuwste buurtcijfers) en Kerncijfers wijken en buurten 2022. Postcodegebieden zijn buurten samengevoegd op hun meest voorkomende postcode, dus een benadering.</p>
+    <p><b>Vlaanderen</b>: Fluvius open data, peildatum 30 september 2026: zonnepanelen op laagspanning, thuisbatterijen en actieve laagspanningsaansluitingen per postcode. Aansluitingen omvatten ook kleine bedrijven, dus het percentage ligt iets lager dan “per woning”.</p>
+    <p>Grenzen: CBS/PDOK, Digitaal Vlaanderen (VRBG 2025), postcodezones © OpenStreetMap-bijdragers.</p>
+  </div>`;
+}
+
+/* ---------- search ---------- */
+const q = document.getElementById('q'), qhint = document.getElementById('qhint');
+function hint(msg) { qhint.textContent = msg; qhint.hidden = !msg; if (msg) setTimeout(() => qhint.hidden = true, 3500); }
+async function doSearch() {
+  const v = q.value.trim(); if (!v) return;
+  const pc = v.replace(/\s+/g, '').slice(0, 4);
+  if (/^\d{4}$/.test(pc)) {
+    const be = gemFeatures.find(f => f.properties.land === 'BE' && (f.properties.pcs || []).includes(pc));
+    const nl = nlPc4[pc];
+    if (be && (!nl || +pc < 1000 || (+pc >= 1500 && +pc < 4000) || +pc >= 8000)) { hint(''); await openGemeente(be.properties.id, { sel: pc }); return; }
+    if (nl) { hint(''); await openGemeente(nl[0], { sub: 'pc4', sel: null }); selectPc4(pc); return; }
+    hint('Postcode niet gevonden'); return;
+  }
+  const lc = v.toLowerCase();
+  const f = gemFeatures.find(f => f.properties.name.toLowerCase() === lc) || gemFeatures.find(f => f.properties.name.toLowerCase().startsWith(lc)) || gemFeatures.find(f => f.properties.name.toLowerCase().includes(lc));
+  if (f) { hint(''); openGemeente(f.properties.id); } else hint('Geen gemeente gevonden');
+}
+async function selectPc4(pc) {
+  const g = gemById[state.gm]; const F = await loadProvince(g.properties);
+  const f = (F.pc4 || []).find(x => x.properties.pc4 === pc);
+  if (f) { state.sel = f.properties.id; renderGemeente(false); }
+}
+q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+q.addEventListener('change', () => { if (gemFeatures && gemFeatures.some(f => f.properties.name === q.value)) doSearch(); });
+
+init().catch(e => { document.getElementById('loading').textContent = 'De kaartgegevens konden niet laden: ' + e.message; });
+</script>
